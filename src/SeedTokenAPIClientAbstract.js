@@ -1,8 +1,9 @@
 
-class SeedTokenClientAPIAbstract {
+class SeedTokenAPIClientAbstract {
   
   constructor (rpcUrl) {     
   }
+  
   /**
    * Creates an Ethereum account
    * 
@@ -37,6 +38,29 @@ class SeedTokenClientAPIAbstract {
   }
 
   /**
+   * Returns last n transactions of a specified address.
+   * 
+   * @param {string} address: Addres to filter 
+   * @param {string} nTransactions: Quantity of transactions to return
+   * @return {Promise<[Transaction]>} Promise with Array of Transaction object
+   */
+  getLastNTransactions(address, nTransactions) {
+    throw new Error('You must implement this method');
+  }
+
+  /**
+   * Checks if provided string is a valid address
+   * 
+   * @param {string} address: Address to check 
+   * @return {Bool}
+   */
+  checkAddress(address) {
+    throw new Error('You must implement this method');
+  }
+
+}
+
+  /**
    * Transaction object returned by getLastNTransactions() function
    * 
    * @typedef {Object} Transaction
@@ -45,18 +69,19 @@ class SeedTokenClientAPIAbstract {
    * @property {string} amount: Amount of token transfered
    * @property {string} timestamp: Timestamp of the block including the transaction
    */
-
-  /**
-   * Returns last n transactions of a specified address.
-   * 
-   * @param {string} address: Addres to filter 
-   * @param {string} nTransactions: Quantity of transactions to return
-   * @return {Promise<Transaction>} Array of Transaction object
-   */
-  
-  getLastNTransactions(address, nTransactions) {
-    throw new Error('You must implement this method');
+  class Transaction {
+    constructor(from, to, amount, timestamp) {
+      this.from = from
+      this.to = to
+      this.amount = amount
+      this.timestamp = timestamp
+    }
   }
-}
+  
 
-module.exports = SeedTokenClientAPIAbstract
+
+
+module.exports = { 
+  SeedTokenAPIClientAbstract: SeedTokenAPIClientAbstract, 
+  Transaction: Transaction 
+} 

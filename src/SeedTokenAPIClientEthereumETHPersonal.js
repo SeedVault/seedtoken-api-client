@@ -1,4 +1,4 @@
-const SeedTokenAPIClientAbstract = require('./SeedTokenAPIClientAbstract.js')
+const { SeedTokenAPIClientAbstract, Transaction } = require('./SeedTokenAPIClientAbstract.js')
 const Web3 = require('web3')
 
 /**
@@ -13,6 +13,14 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
 
     this.bufferSize = 50 //how many blocks to read on each iteration
   }
+
+  /**
+   * Checks address format and checksum if case checksum is available
+   */
+  checkAddress(address) {
+    return Web3.utils.isAddress(address)
+  }
+
   /**
    * Creates personal account in ethereum node
    * 
@@ -103,12 +111,8 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
 
     let transactions = []
     ts.forEach((t) => {
-      transactions.push({
-        from: t.from,
-        to: t.to,
-        value: this.web3.utils.fromWei(t.value, 'ether'),
-        timestamp: t.block.timestamp
-      })
+      let tObj = new Transaction(t.from, t.to, this.web3.utils.fromWei(t.value, 'ether'), t.block.timestamp)
+      transactions.push(tObj)
     })
     return transactions
   }
