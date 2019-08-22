@@ -32,7 +32,7 @@ it('checks address validity', () => {
 
 it('transfers tokens from test account to newly created account', async () => {
     let hash = await st.transfer(testAddress, newAddress, transfer1Amount, testAddressPassphrase)
-    expect(hash).toMatch(/^0x([A-Fa-f0-9]{64})$/);
+    expect(hash).toMatch(/^0x([A-Fa-f0-9]{64})$/);    
 })
 
 it('gets balance from new address', async () => {

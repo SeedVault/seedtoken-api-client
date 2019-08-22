@@ -1,6 +1,6 @@
 const { SeedTokenAPIClientAbstract, Transaction } = require('./SeedTokenAPIClientAbstract.js')
 const Web3 = require('web3')
-
+const {performance} = require('perf_hooks');
 /**
  * Handles native Ethereum ETH token using personal accounts with passphrase letting Parity Ethereum node to handle and store private keys
  */
@@ -12,6 +12,9 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     this.web3 = new Web3(new Web3.providers.HttpProvider(this.rpcURL))        
 
     this.bufferSize = 50 //how many blocks to read on each iteration
+    this.timeout = 30    //how many seconds to wait for a result (used in getLastNTransactions())
+
+    this.gasMaxLimit = 10000 //max gaslimit allowed
   }
 
   /**
@@ -42,8 +45,11 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
    * 
    * @param {string} address: Ethereum address
    */
-  getBalance(address) {            
+  getBalance(address) {                
     return new Promise((resolve, reject) => {
+      if (!this.checkAddress(address)) {
+        reject('Invalid address')
+      }
       this.web3.eth.getBalance(address, (err, wei) => {           
         if (wei) {
           resolve(this.web3.utils.fromWei(wei, 'ether'))
@@ -67,6 +73,19 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     gasPrice = gasPrice || '0' //in POA should be 0
     this.web3.eth.personal.unlockAccount(fromAddress, passphrase)
     return new Promise((resolve, reject) => {
+      if (!this.checkAddress(fromAddress)) {
+        reject('Invalid from address')
+      }
+      if (!this.checkAddress(toAddress)) {
+        reject('Invalid to address')
+      }
+      if (typeof amountETH !== 'string') {
+        reject('Invalid amount value type. It should be a string')
+      }
+      if (gasPrice > this.gasMaxLimit) {
+        reject('gasPrice exceeds maximum gas price')
+      }
+      
       this.web3.eth.sendTransaction(
         {
           from: fromAddress,
@@ -92,16 +111,27 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
    * @param {string} address: Ethereum address to filter 
    * @param {int} nTransaction: Amount of transactions to return
    * @param {int} bufferSize: Amount of block to be fetch on each batch request
+   * @param {int} timeout: Timeout in seconds. This method will stop and return what has at the moment of timeout
    */
-  async getLastNTransactions(address, nTransactions, bufferSize) {    
+  async getLastNTransactions(address, nTransactions, bufferSize, timeout) {
+    if (!this.checkAddress(address)) {
+        return Promise.reject('Invalid address')
+    }   
+    
     bufferSize = bufferSize || this.bufferSize
+    timeout = timeout || this.timeout
     let endBlockNumber = await this.web3.eth.getBlockNumber()    
     let startBlockNumber = endBlockNumber - bufferSize    
     let max = nTransactions
     let ts = []
     let blocks = []
+
+    let t0 = performance.now();
     
-    while (ts.length < nTransactions || startBlockNumber < 1) {//finish at block 1      
+    while (ts.length < nTransactions 
+            && startBlockNumber >= 1  //finish at block 1      
+            && (performance.now() - t0) < (timeout * 1000)) {
+      
       blocks = await this._getBlocks(startBlockNumber, endBlockNumber, true)            
       ts = ts.concat(this._getTransactionsByAddressFromBlocks(blocks, address, max - ts.length))      
 
