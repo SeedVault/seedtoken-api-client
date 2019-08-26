@@ -113,13 +113,14 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
    * @param {int} bufferSize: Amount of block to be fetch on each batch request
    * @param {int} timeout: Timeout in seconds. This method will stop and return what has at the moment of timeout
    */
-  async getLastNTransactions(address, nTransactions, bufferSize, timeout) {
+  async getLastNTransactions(address, nTransactions, bufferSize, timeout, since) {
     if (!this.checkAddress(address)) {
         return Promise.reject('Invalid address')
     }   
     
     bufferSize = bufferSize || this.bufferSize
     timeout = timeout || this.timeout
+    since = since || Math.floor(Date.now() / 1000)
     let endBlockNumber = await this.web3.eth.getBlockNumber()    
     let startBlockNumber = endBlockNumber - bufferSize    
     let max = nTransactions
@@ -130,13 +131,14 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     
     while (ts.length < nTransactions 
             && startBlockNumber >= 1  //finish at block 1      
-            && (performance.now() - t0) < (timeout * 1000)) {
-      
+            && (performance.now() - t0) < (timeout * 1000)
+            && (blocks.length == 0 || blocks[0].timestamp >= since)) {
+                        
       blocks = await this._getBlocks(startBlockNumber, endBlockNumber, true)            
       ts = ts.concat(this._getTransactionsByAddressFromBlocks(blocks, address, max - ts.length))      
 
       startBlockNumber -= bufferSize + 1 //moves buffer pointer
-      endBlockNumber -= bufferSize + 1
+      endBlockNumber -= bufferSize + 1                 
     }    
 
     let transactions = []
