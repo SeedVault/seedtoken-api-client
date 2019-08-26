@@ -112,6 +112,7 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
    * @param {int} nTransaction: Amount of transactions to return
    * @param {int} bufferSize: Amount of block to be fetch on each batch request
    * @param {int} timeout: Timeout in seconds. This method will stop and return what has at the moment of timeout
+   * @param {int} since: Filter based on date in UNIX Epoch time (note it's quantity of seconds not miliseconds as in Javascript Date.now())
    */
   async getLastNTransactions(address, nTransactions, bufferSize, timeout, since) {
     if (!this.checkAddress(address)) {

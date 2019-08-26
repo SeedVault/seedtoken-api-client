@@ -67,7 +67,7 @@ class SeedTokenAPIClientAbstract {
    * @property {string} from: Source address
    * @property {string} to: destionation address
    * @property {string} amount: Amount of token transfered
-   * @property {string} timestamp: Timestamp of the block including the transaction
+   * @property {string} timestamp: Timestamp of the block including the transaction. Note it's UNIX Epoch time. (Quantity of seconds not miliseconds as in Javascript Date.now())
    */
   class Transaction {
     constructor(from, to, amount, timestamp) {
