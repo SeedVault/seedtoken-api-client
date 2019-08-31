@@ -64,13 +64,15 @@ class SeedTokenAPIClientAbstract {
    * Transaction object returned by getLastNTransactions() function
    * 
    * @typedef {Object} Transaction
+   * @property {string} tx_id: Transaction id
    * @property {string} from: Source address
    * @property {string} to: destionation address
    * @property {string} amount: Amount of token transfered
    * @property {string} timestamp: Timestamp of the block including the transaction. Note it's UNIX Epoch time. (Quantity of seconds not miliseconds as in Javascript Date.now())
    */
   class Transaction {
-    constructor(from, to, amount, timestamp) {
+    constructor(tx_id, from, to, amount, timestamp) {
+      this.tx_id = tx_id
       this.from = from
       this.to = to
       this.amount = amount

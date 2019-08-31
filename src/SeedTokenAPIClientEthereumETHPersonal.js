@@ -143,8 +143,8 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     }    
 
     let transactions = []
-    ts.forEach((t) => {
-      let tObj = new Transaction(t.from, t.to, this.web3.utils.fromWei(t.value, 'ether'), t.block.timestamp)
+    ts.forEach((t) => {      
+      let tObj = new Transaction(t.hash, t.from, t.to, this.web3.utils.fromWei(t.value, 'ether'), t.block.timestamp)
       transactions.push(tObj)
     })
     return transactions
