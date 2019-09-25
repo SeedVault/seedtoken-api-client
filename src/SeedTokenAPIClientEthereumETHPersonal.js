@@ -9,7 +9,22 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     super();
 
     this.rpcURL = rpcURL
-    this.web3 = new Web3(new Web3.providers.HttpProvider(this.rpcURL))        
+    let provider
+
+    if (rpcURL.startsWith('http')) {
+      provider = new Web3.providers.HttpProvider(this.rpcURL)  
+    } else if (rpcURL.startsWith('ws://')) {
+      provider = new Web3.providers.WebsocketProvider(this.rpcURL)
+      provider.on('error', e => console.error('WS Error', e));
+      provider.on('end', e => console.error('WS End', e));
+    } else if (rpcURL.startsWith('file://')) {
+      var net = require('net');
+      provider = new Web3.providers.IpcProvider(rpcURL.replace('file://',''), net) 
+    } else {
+      throw new Error('Invalid rpcURL')
+    }
+
+    this.web3 = new Web3(provider)
 
     this.bufferSize = 50 //how many blocks to read on each iteration
     this.timeout = 30    //how many seconds to wait for a result (used in getLastNTransactions())
@@ -69,9 +84,9 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
    * @param {string} passphrase: Passphrase to unlock the account
    * @param {string} gasPrice: Gas price for the transaction. Default 0 for POA chain
    */
-  transfer(fromAddress, toAddress, amountETH, passphrase, gasPrice) {    
+  async transfer(fromAddress, toAddress, amountETH, passphrase, gasPrice) {    
     gasPrice = gasPrice || '0' //in POA should be 0
-    this.web3.eth.personal.unlockAccount(fromAddress, passphrase)
+    await this.web3.eth.personal.unlockAccount(fromAddress, passphrase)
     return new Promise((resolve, reject) => {
       if (!this.checkAddress(fromAddress)) {
         reject('Invalid from address')
@@ -121,7 +136,7 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     
     bufferSize = bufferSize || this.bufferSize
     timeout = timeout || this.timeout
-    since = since || Math.floor(Date.now() / 1000)
+
     let endBlockNumber = await this.web3.eth.getBlockNumber()    
     let startBlockNumber = endBlockNumber - bufferSize    
     let max = nTransactions
@@ -131,11 +146,11 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     let t0 = performance.now();
     
     while (ts.length < nTransactions 
-            && startBlockNumber >= 1  //finish at block 1      
+            && startBlockNumber >= 1  //stop at block 1      
             && (performance.now() - t0) < (timeout * 1000)
-            && (blocks.length == 0 || blocks[0].timestamp >= since)) {
-                        
-      blocks = await this._getBlocks(startBlockNumber, endBlockNumber, true)            
+            && (!since || blocks.length == 0 || (blocks.length && blocks[0].timestamp >= since))) {
+
+      blocks = await this._getBlocks(startBlockNumber, endBlockNumber, true)                  
       ts = ts.concat(this._getTransactionsByAddressFromBlocks(blocks, address, max - ts.length))      
 
       startBlockNumber -= bufferSize + 1 //moves buffer pointer

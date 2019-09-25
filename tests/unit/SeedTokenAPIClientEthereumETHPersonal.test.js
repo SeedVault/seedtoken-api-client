@@ -1,6 +1,11 @@
 const Web3 = require('web3')
 const { SeedTokenAPIClientEthereumETHPersonal } = require('../../index.js')
 
+if (!process.env.PARITY_HTTP_URL && !process.env.PARITY_WS_URL && !process.env.PARITY_IPC_URL) {
+    console.log('You need to configure at least one URL in env: PARITY_HTTP_URL, PARITY_WS_URL and PARITY_IPC_URL')    
+    process.exit(1)
+}
+
 let st, newAddress
 
 let testAddress = process.env.PARITY_TEST_ADDRESS || '0x00a329c0648769A73afAc7F9381E08FB43dBEA72'//parity dev chain address
@@ -9,13 +14,11 @@ let newPassphrase = Math.random().toString(36).substr(2, 8)
 let transfer1Amount = '0.000000002'
 let transfer2Amount = '0.000000001'
 
-if (!process.env.PARITY_URL) {
-    console.log('PARITY_URL env variable is undefined!')    
-}
 
 it('instatiates ok', () => {
-  st = new SeedTokenAPIClientEthereumETHPersonal(process.env.PARITY_URL)
-  expect(st.rpcURL).toBe(process.env.PARITY_URL)
+  if (process.env.PARITY_HTTP_URL) {st = new SeedTokenAPIClientEthereumETHPersonal(process.env.PARITY_HTTP_URL)}
+  if (process.env.PARITY_WS_URL) {st = new SeedTokenAPIClientEthereumETHPersonal(process.env.PARITY_WS_URL)}
+  if (process.env.PARITY_IPC_URL) {st = new SeedTokenAPIClientEthereumETHPersonal(process.env.PARITY_IPC_URL)}
 })
 
 it('creates new account', async () => {    
