@@ -5,7 +5,7 @@ var argv = require('minimist')(process.argv.slice(2), {string: ['address', 'from
 
 let st
 if (argv.ethpersonal) {
-    st = new SeedTokenAPIClientEthereumETHPersonal(argv.url)
+    st = SeedTokenAPIClientEthereumETHPersonal.getInstance(argv.url)
 }
 
 if (argv['_'] == 'getbalance') {        

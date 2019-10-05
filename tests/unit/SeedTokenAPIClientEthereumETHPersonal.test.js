@@ -14,11 +14,20 @@ let newPassphrase = Math.random().toString(36).substr(2, 8)
 let transfer1Amount = '0.000000002'
 let transfer2Amount = '0.000000001'
 
+it('returns singleton ok', () => {
+    singleton = SeedTokenAPIClientEthereumETHPersonal.getInstance(process.env.PARITY_HTTP_URL)
+    singleton2 = SeedTokenAPIClientEthereumETHPersonal.getInstance(process.env.PARITY_HTTP_URL)
+    singleton3 = SeedTokenAPIClientEthereumETHPersonal.getInstance(process.env.PARITY_HTTP_URL + '1')
+    expect(singleton == singleton2).toBeTruthy()
+    expect(singleton == singleton3).toBeFalsy()
+
+})
 
 it('instatiates ok', () => {
-  if (process.env.PARITY_HTTP_URL) {st = new SeedTokenAPIClientEthereumETHPersonal(process.env.PARITY_HTTP_URL)}
-  if (process.env.PARITY_WS_URL) {st = new SeedTokenAPIClientEthereumETHPersonal(process.env.PARITY_WS_URL)}
-  if (process.env.PARITY_IPC_URL) {st = new SeedTokenAPIClientEthereumETHPersonal(process.env.PARITY_IPC_URL)}
+    expect(() => {st = new SeedTokenAPIClientEthereumETHPersonal(process.env.PARITY_HTTP_URL)}).toThrow(Error);
+    if (process.env.PARITY_HTTP_URL) {st = SeedTokenAPIClientEthereumETHPersonal.getInstance(process.env.PARITY_HTTP_URL)}
+    if (process.env.PARITY_WS_URL) {st = SeedTokenAPIClientEthereumETHPersonal.getInstance(process.env.PARITY_WS_URL)}
+    if (process.env.PARITY_IPC_URL) {st = SeedTokenAPIClientEthereumETHPersonal.getInstance(process.env.PARITY_IPC_URL)}
 })
 
 it('creates new account', async () => {    

@@ -4,9 +4,14 @@ const {performance} = require('perf_hooks');
 /**
  * Handles native Ethereum ETH token using personal accounts with passphrase letting Parity Ethereum node to handle and store private keys
  */
-class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
-  constructor (rpcURL) {  
+class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {  
+
+  constructor (rpcURL, forceSingleton) {  
     super();
+
+    if (!forceSingleton) {
+      throw new Error('You must get instance with SeedTokenAPIClientEthereumETHPersonal.getInstance()')
+    }
 
     this.rpcURL = rpcURL
     let provider
@@ -30,6 +35,23 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     this.timeout = 30    //how many seconds to wait for a result (used in getLastNTransactions())
 
     this.gasMaxLimit = 10000 //max gaslimit allowed
+  }
+
+  /**
+   * Provides a singleton.
+   * 
+   */
+  static getInstance(rpcURL) {
+
+    if (!SeedTokenAPIClientEthereumETHPersonal.instance) {
+      SeedTokenAPIClientEthereumETHPersonal.instance = {}
+    }
+
+    if (SeedTokenAPIClientEthereumETHPersonal.instance[rpcURL]) {
+      return SeedTokenAPIClientEthereumETHPersonal.instance[rpcURL]
+    }
+    SeedTokenAPIClientEthereumETHPersonal.instance[rpcURL] = new SeedTokenAPIClientEthereumETHPersonal(rpcURL, true)
+    return SeedTokenAPIClientEthereumETHPersonal.instance[rpcURL]
   }
 
   /**
