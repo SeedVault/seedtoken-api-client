@@ -20,7 +20,10 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     }
 
     this.debug = process.env['SEEDTOKEN_API_CLIENT_DEBUG'] == 'true'|| false
-    this.lockedTransfer = true
+    this.lockedTransfer = process.env['SEEDTOKEN_API_CLIENT_LOCKER_TRANSFER'] == 'true'
+    if (process.env['SEEDTOKEN_API_CLIENT_LOCKER_TRANSFER'] === undefined) {
+      this.lockedTransfer = true
+    }    
     this.lockTimeout = 10000
     this.rpcURL = rpcURL
     let provider
