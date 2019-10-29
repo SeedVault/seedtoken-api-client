@@ -1,9 +1,15 @@
 const { SeedTokenAPIClientAbstract, Transaction } = require('./SeedTokenAPIClientAbstract.js')
 const Web3 = require('web3')
 const {performance} = require('perf_hooks');
+const locks = require('locks');
 /**
  * Handles native Ethereum ETH token using personal accounts with passphrase letting Parity Ethereum node to handle and store private keys
  */
+function sleep(ms){
+    return new Promise(resolve=>{
+        setTimeout(resolve,ms)
+    })
+}
 class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {  
 
   constructor (rpcURL, forceSingleton) {  
@@ -13,6 +19,9 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
       throw new Error('You must get instance with SeedTokenAPIClientEthereumETHPersonal.getInstance()')
     }
 
+    this.debug = process.env['SEEDTOKEN_API_CLIENT_DEBUG'] == 'true'|| false
+    this.lockedTransfer = true
+    this.lockTimeout = 10000
     this.rpcURL = rpcURL
     let provider
 
@@ -71,8 +80,9 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
       this.web3.eth.personal.newAccount(passprase, (err, address) => {//nothing special to do here, leaving just in case
           if (address) { 
             resolve(address)
+          } else {
+            reject(err)  
           }
-          reject(err)  
         })
       });    
   }
@@ -90,8 +100,9 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
       this.web3.eth.getBalance(address, (err, wei) => {           
         if (wei) {
           resolve(this.web3.utils.fromWei(wei, 'ether'))
+        } else {
+          reject(err)
         }
-        reject(err)
       })
     })
   }
@@ -108,21 +119,53 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
    */
   async transfer(fromAddress, toAddress, amountETH, passphrase, gasPrice) {    
     gasPrice = gasPrice || '0' //in POA should be 0
+    if (!this.checkAddress(fromAddress)) {
+      reject('Invalid from address')
+      return
+    }
+    if (!this.checkAddress(toAddress)) {
+      reject('Invalid to address')
+      return
+    }
+    if (typeof amountETH !== 'string') {
+      reject('Invalid amount value type. It should be a string')
+      return
+    }
+    if (gasPrice > this.gasMaxLimit) {
+      reject('gasPrice exceeds maximum gas price')
+      return
+    }
+    //We do mutex here to protect unlockAccount and transfer operations because Parity doesn't allow more than one unlocked account
+    if (this.lockedTransfer) {
+      const mutex = locks.createMutex(); 
+      if (mutex.isLocked) {
+        this.log('It\'s locked. We wait for ' + this.lockTimeout + 'ms ')
+      }
+
+      return new Promise((resolve, reject) => {
+        mutex.timedLock(this.lockTimeout, async(error) => {
+          if (error) {
+            reject('Could not get the lock within ' + this.lockTimeout + ' ms, so gave up');
+          } else {
+            this.log('We got the lock!');          
+            let hash = await this._unlockedUnverifiedTransfer(fromAddress, toAddress, amountETH, passphrase, gasPrice)
+            this.log('Unlocking')
+            mutex.unlock();                  
+            resolve(hash)
+          }
+        })
+      })
+    } else {
+      return this._unlockedUnverifiedTransfer(fromAddress, toAddress, amountETH, passphrase, gasPrice)
+    }
+  }
+
+  async _unlockedUnverifiedTransfer(fromAddress, toAddress, amountETH, passphrase, gasPrice) {          
+    this.log('Trying to transfer ' + amountETH + ' tokens from address ' + fromAddress + ' to address ' + toAddress)
+    this.log('First try to unlock account ' + fromAddress)
     await this.web3.eth.personal.unlockAccount(fromAddress, passphrase)
-    return new Promise((resolve, reject) => {
-      if (!this.checkAddress(fromAddress)) {
-        reject('Invalid from address')
-      }
-      if (!this.checkAddress(toAddress)) {
-        reject('Invalid to address')
-      }
-      if (typeof amountETH !== 'string') {
-        reject('Invalid amount value type. It should be a string')
-      }
-      if (gasPrice > this.gasMaxLimit) {
-        reject('gasPrice exceeds maximum gas price')
-      }
-      
+    this.log('Account unlocked')    
+    return new Promise((resolve, reject) => {              
       this.web3.eth.sendTransaction(
         {
           from: fromAddress,
@@ -132,10 +175,13 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
           gasPrice: gasPrice,          
         },
         (err, hash) => {//nothing special to do here, leaving just in case
-          if (hash) { 
-            resolve(hash)
+          if (hash) {             
+            this.log('Transaction was sent to the node. Returned hash ' + hash)
+            resolve(hash)            
+          } else {
+            this.log('Transaction error', err)
+            reject(err)  
           }
-          reject(err)  
         })
       })
   }
@@ -206,12 +252,14 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
         batch.add(
           this.web3.eth.getBlock.request(i, returnTransactions, (err, block) => {          
             if (err) {
-              reject(err)
+              reject(err)     
+              return         
             }      
             blocks.push(block)                        
             count++ //using counter we are sure all requests finished in the batch
             if (count == total) {  
-              resolve(blocks) //resolve promise when all blocks are fetched
+              resolve(blocks) //resolve promise when all blocks are fetched              
+              return
             }
         
           })
@@ -303,6 +351,12 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     return transactions
   }
 
+  log(data) {
+    if (this.debug) {
+      console.log(data)
+    }
+  }
+  
 }
 
 module.exports = SeedTokenAPIClientEthereumETHPersonal
