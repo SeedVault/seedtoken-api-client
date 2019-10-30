@@ -22,7 +22,7 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     }
 
     this.debug = process.env['SEEDTOKEN_API_CLIENT_DEBUG'] == 'true'|| false
-    this.lockedTransaction = process.env['SEEDTOKEN_API_CLIENT_LOCKER_TRANSFER'] == 'true'
+    this.lockedTransaction = process.env['SEEDTOKEN_API_CLIENT_LOCKED_TRANSACTION'] == 'true'
     if (process.env['SEEDTOKEN_API_CLIENT_LOCKED_TRANSACTION'] === undefined) {
       this.lockedTransaction = true
     }    
@@ -193,7 +193,7 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
           from: fromAddress,
           to: toAddress, 
           value: this.web3.utils.toWei(amountETH, 'ether'),
-          gas: 21000,//minimal gas
+          gas: "0x76c0", // 30400
           gasPrice: gasPrice,          
         },
         (err, hash) => {//nothing special to do here, leaving just in case
