@@ -1,7 +1,8 @@
 const { SeedTokenAPIClientAbstract, Transaction } = require('./SeedTokenAPIClientAbstract.js')
 const Web3 = require('web3')
 const {performance} = require('perf_hooks');
-const locks = require('locks');
+const Mutex = require( 'Mutex' );
+
 /**
  * Handles native Ethereum ETH token using personal accounts with passphrase letting Parity Ethereum node to handle and store private keys
  */
@@ -20,11 +21,10 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     }
 
     this.debug = process.env['SEEDTOKEN_API_CLIENT_DEBUG'] == 'true'|| false
-    this.lockedTransfer = process.env['SEEDTOKEN_API_CLIENT_LOCKER_TRANSFER'] == 'true'
-    if (process.env['SEEDTOKEN_API_CLIENT_LOCKER_TRANSFER'] === undefined) {
-      this.lockedTransfer = true
+    this.lockedTransaction = process.env['SEEDTOKEN_API_CLIENT_LOCKER_TRANSFER'] == 'true'
+    if (process.env['SEEDTOKEN_API_CLIENT_LOCKED_TRANSACTION'] === undefined) {
+      this.lockedTransaction = true
     }    
-    this.lockTimeout = 10000
     this.rpcURL = rpcURL
     let provider
 
@@ -138,24 +138,21 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
       reject('gasPrice exceeds maximum gas price')
       return
     }
-    //We do mutex here to protect unlockAccount and transfer operations because Parity doesn't allow more than one unlocked account
-    if (this.lockedTransfer) {
-      const mutex = locks.createMutex(); 
-      if (mutex.isLocked) {
-        this.log('It\'s locked. We wait for ' + this.lockTimeout + 'ms ')
+    //We do mutex here to protect unlockAccount and transfer operations because Parity doesn't allow more than one unlocked account at time
+    if (this.lockedTransaction) {
+      let mutex = new Mutex('transaction_lock');
+
+      if (mutex.isLocked()) {
+        this.log('It\'s locked. Will wait for it')
       }
 
       return new Promise((resolve, reject) => {
-        mutex.timedLock(this.lockTimeout, async(error) => {
-          if (error) {
-            reject('Could not get the lock within ' + this.lockTimeout + ' ms, so gave up');
-          } else {
-            this.log('We got the lock!');          
-            let hash = await this._unlockedUnverifiedTransfer(fromAddress, toAddress, amountETH, passphrase, gasPrice)
-            this.log('Unlocking')
-            mutex.unlock();                  
-            resolve(hash)
-          }
+        mutex.waitLock(async(error) => {        
+          this.log('We got the lock!');          
+          let hash = await this._unlockedUnverifiedTransfer(fromAddress, toAddress, amountETH, passphrase, gasPrice)
+          this.log('Unlocking')
+          mutex.unlock();                  
+          resolve(hash)
         })
       })
     } else {

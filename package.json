@@ -7,7 +7,7 @@
     "test": "jest --runInBand --detectOpenHandles"
   },
   "dependencies": {
-    "locks": "^0.2.2",
+    "Mutex": "git+https://github.com/Perennials/mutex-node.git",
     "minimist": "^1.2.0",
     "readline-sync": "^1.4.10",
     "web3": "^1.2.1"
