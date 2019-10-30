@@ -26,9 +26,9 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     if (process.env['SEEDTOKEN_API_CLIENT_LOCKED_TRANSACTION'] === undefined) {
       this.lockedTransaction = true
     }    
-    this.lockRetryCount = process.env['SEEDTOKEN_API_CLIENT_RETRY_COUNT'] || 10
-    this.lockRetryDelay = process.env['SEEDTOKEN_API_CLIENT_RETRY_DELAY'] || 500
-    this.lockTTL = process.env['SEEDTOKEN_API_CLIENT_LOCK_TTL'] || 2000
+    this.lockRetryCount = parseInt(process.env['SEEDTOKEN_API_CLIENT_RETRY_COUNT']) || 10
+    this.lockRetryDelay = parseInt(process.env['SEEDTOKEN_API_CLIENT_RETRY_DELAY']) || 500
+    this.lockTTL = parseInt(process.env['SEEDTOKEN_API_CLIENT_LOCK_TTL']) || 2000
 
     this.rpcURL = rpcURL
     let provider
@@ -156,11 +156,7 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
 
       return new Promise((resolve, reject) => {
         // the string identifier for the resource you want to lock        
-        redlock.lock(resource, this.lockTTL).then(async (lock) => {
-          if(err) {
-            console.error(err);
-            reject(err)
-          }
+        redlock.lock(resource, this.lockTTL).then(async (lock) => {          
           this.log('We got the lock!');          
           var hash = await this._unlockedUnverifiedTransfer(fromAddress, toAddress, amountETH, passphrase, gasPrice)
           this.log('Unlocking')          
