@@ -1,7 +1,8 @@
 const { SeedTokenAPIClientAbstract, Transaction } = require('./SeedTokenAPIClientAbstract.js')
 const Web3 = require('web3')
 const {performance} = require('perf_hooks');
-const Mutex = require( 'Mutex' );
+const Redis = require('redis')
+const Redlock = require('redlock');
 
 /**
  * Handles native Ethereum ETH token using personal accounts with passphrase letting Parity Ethereum node to handle and store private keys
@@ -25,6 +26,10 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     if (process.env['SEEDTOKEN_API_CLIENT_LOCKED_TRANSACTION'] === undefined) {
       this.lockedTransaction = true
     }    
+    this.lockRetryCount = process.env['SEEDTOKEN_API_CLIENT_RETRY_COUNT'] || 10
+    this.lockRetryDelay = process.env['SEEDTOKEN_API_CLIENT_RETRY_DELAY'] || 500
+    this.lockTTL = process.env['SEEDTOKEN_API_CLIENT_LOCK_TTL'] || 2000
+
     this.rpcURL = rpcURL
     let provider
 
@@ -140,19 +145,36 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     }
     //We do mutex here to protect unlockAccount and transfer operations because Parity doesn't allow more than one unlocked account at time
     if (this.lockedTransaction) {
-      let mutex = new Mutex('transaction_lock');
-
-      if (mutex.isLocked()) {
-        this.log('It\'s locked. Will wait for it')
-      }
+      var redisClient = Redis.createClient({
+        host: process.env.REDIS_HOST,
+        port: process.env.REDIS_PORT,
+        password: process.env.REDIS_PASSWORD,
+        db: 1,
+      });
+      var resource = 'locks:seedtokenapiclient';      
+      var redlock = new Redlock([redisClient], {riftFactor: 0.01, retryCount:  this.lockRetryCount, retryDelay:  this.lockRetryDelay, retryJitter:  200});
 
       return new Promise((resolve, reject) => {
-        mutex.waitLock(async(error) => {        
+        // the string identifier for the resource you want to lock        
+        redlock.lock(resource, this.lockTTL).then(async (lock) => {
+          if(err) {
+            console.error(err);
+            reject(err)
+          }
           this.log('We got the lock!');          
-          let hash = await this._unlockedUnverifiedTransfer(fromAddress, toAddress, amountETH, passphrase, gasPrice)
-          this.log('Unlocking')
-          mutex.unlock();                  
-          resolve(hash)
+          var hash = await this._unlockedUnverifiedTransfer(fromAddress, toAddress, amountETH, passphrase, gasPrice)
+          this.log('Unlocking')          
+          return lock.unlock()
+            .then(() => {
+              resolve(hash)
+            })
+            .catch((err) => {
+              // we weren't able to reach redis; your lock will eventually
+              // expire, but you probably want to log this error
+              console.error(err);
+              reject(err)
+            });
+          
         })
       })
     } else {
