@@ -128,20 +128,16 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
   async transfer(fromAddress, toAddress, amountETH, passphrase, gasPrice) {    
     gasPrice = gasPrice || '0' //in POA should be 0
     if (!this.checkAddress(fromAddress)) {
-      reject('Invalid from address')
-      return
+      throw new Error('Invalid from address')      
     }
     if (!this.checkAddress(toAddress)) {
-      reject('Invalid to address')
-      return
+      throw new Error('Invalid to address')      
     }
     if (typeof amountETH !== 'string') {
-      reject('Invalid amount value type. It should be a string')
-      return
+      throw new Error('Invalid amount value type. It should be a string')      
     }
     if (gasPrice > this.gasMaxLimit) {
-      reject('gasPrice exceeds maximum gas price')
-      return
+      throw new Error('gasPrice exceeds maximum gas price')
     }
     //We do mutex here to protect unlockAccount and transfer operations because Parity doesn't allow more than one unlocked account at time
     if (this.lockedTransaction) {
