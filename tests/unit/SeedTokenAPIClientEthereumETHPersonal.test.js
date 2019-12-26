@@ -25,12 +25,16 @@ it('returns singleton ok', () => {
 
 it('instatiates ok', () => {
     expect(() => {st = new SeedTokenAPIClientEthereumETHPersonal(process.env.PARITY_HTTP_URL)}).toThrow(Error);
-    if (process.env.PARITY_HTTP_URL) {st = SeedTokenAPIClientEthereumETHPersonal.getInstance(process.env.PARITY_HTTP_URL)}
+    if (process.env.PARITY_HTTP_URL) {
+	st = SeedTokenAPIClientEthereumETHPersonal.getInstance(process.env.PARITY_HTTP_URL)
+	st.lockedTransaction = false
+    }
     if (process.env.PARITY_WS_URL) {st = SeedTokenAPIClientEthereumETHPersonal.getInstance(process.env.PARITY_WS_URL)}
     if (process.env.PARITY_IPC_URL) {st = SeedTokenAPIClientEthereumETHPersonal.getInstance(process.env.PARITY_IPC_URL)}
 })
 
-it('creates new account', async () => {    
+
+it('creates new account', async () => {
     newAddress = await st.createAccount(newPassphrase)
     expect(Web3.utils.isAddress(newAddress)).toBeTruthy()
 })
