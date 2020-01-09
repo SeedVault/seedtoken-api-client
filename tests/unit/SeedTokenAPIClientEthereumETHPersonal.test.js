@@ -56,7 +56,7 @@ it('gets balance from new address', async () => {
     expect(balance).toBe(transfer1Amount);
 })
 
-it('gets last N transactions of new address', async () => {
+it('gets last N transactions of new address', async () => {//@TODO will with blockscout because it will be refreshing each 25s
     await st.transfer(newAddress, testAddress, transfer2Amount, newPassphrase)    
     let transactions = await st.getLastNTransactions(newAddress, 2, 10)
     expect(transactions.length).toBe(2)    

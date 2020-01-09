@@ -3,6 +3,7 @@ const Web3 = require('web3')
 const {performance} = require('perf_hooks');
 const Redis = require('redis')
 const Redlock = require('redlock');
+const Axios = require('axios');
 
 /**
  * Handles native Ethereum ETH token using personal accounts with passphrase letting Parity Ethereum node to handle and store private keys
@@ -45,6 +46,8 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     } else {
       throw new Error('Invalid rpcURL')
     }
+
+    this.axios = Axios.create({baseURL: process.env['VUE_APP_PARITY_URL_EXPLORER']});
 
     this.web3 = new Web3(provider)
 
@@ -202,19 +205,54 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
 
   /**
    * Returns a promise with last n transactions of a specifiedd address. Ordered from new to old.
-   * If any of those last n transactions are old, this will take some time 
-   * @TODO try Parity trace module (seems is still slow) or any other kind of off-chain index solution
    * 
    * @param {string} address: Ethereum address to filter 
    * @param {int} nTransaction: Amount of transactions to return
-   * @param {int} bufferSize: Amount of block to be fetch on each batch request
-   * @param {int} timeout: Timeout in seconds. This method will stop and return what has at the moment of timeout
    * @param {int} since: Filter based on date in UNIX Epoch time (note it's quantity of seconds not miliseconds as in Javascript Date.now())
    */
-  async getLastNTransactions(address, nTransactions, bufferSize, timeout, since) {
+  async getLastNTransactions(address, nTransactions, since) {
     if (!this.checkAddress(address)) {
-        return Promise.reject('Invalid address')
+        throw new Error('Invalid address')      
     }   
+    
+    if (process.env['SEEDTOKEN_API_CLIENT_GETLASTTRANSACTIONS_BACKEND'] == 'parity') {
+      return this._getLastNTransactionsParity(address, nTransactions, since)
+    } else if (process.env['SEEDTOKEN_API_CLIENT_GETLASTTRANSACTIONS_BACKEND'] == 'blockscout') {
+      return this._getLastNTransactionsBlockscout(address, nTransactions, since)
+    } else {      
+      throw new Error('Invalid SEEDTOKEN_API_CLIENT_GETLASTTRANSACTIONS_BACKEND value')
+    }
+  }
+
+  /**
+   * Returns a promise with last n transactions of a specifiedd address. Ordered from new to old.
+   * This method uses Blockscout blockchain explorer as backend so it will be extremely fast
+   * but transactions can be out of sync form Parity for 25s maximum
+   * 
+   * @param {string} address: Ethereum address to filter 
+   * @param {int} nTransaction: Amount of transactions to return
+   * @param {int} since: Filter based on date in UNIX Epoch time (note it's quantity of seconds not miliseconds as in Javascript Date.now())
+   */
+  async _getLastNTransactionsBlockscout(address, nTransactions, since) {
+    const ts = await this.axios.get(`/api?module=account&action=txlist&address=${address}&sort=desc&page=1&offset=${nTransactions}`);   
+
+    let transactions = []
+    ts.data.result.forEach((t) => {            
+      let tObj = new Transaction(t.hash, t.from, t.to, this.web3.utils.fromWei(t.value, 'ether'), t.timeStamp)
+      transactions.push(tObj)
+    })
+    return transactions
+  }
+
+  /**
+   * Returns a promise with last n transactions of a specifiedd address. Ordered from new to old.
+   * This does a full scan of Parity database so if any of those last n transactions are old, this will take some time 
+   * 
+   * @param {string} address: Ethereum address to filter 
+   * @param {int} nTransaction: Amount of transactions to return
+   * @param {int} since: Filter based on date in UNIX Epoch time (note it's quantity of seconds not miliseconds as in Javascript Date.now())
+   */
+  async _getLastNTransactionsParity(address, nTransactions, since) {
     
     bufferSize = bufferSize || this.bufferSize
     timeout = timeout || this.timeout
