@@ -52,7 +52,7 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     this.web3 = new Web3(provider)
 
     this.bufferSize = 50 //how many blocks to read on each iteration
-    this.timeout = 30    //how many seconds to wait for a result (used in getLastNTransactions())
+    this.timeout = 5     //how many seconds to wait for a result (used in getLastNTransactions())
 
     this.gasMaxLimit = 10000 //max gaslimit allowed
   }
@@ -254,11 +254,8 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
    */
   async _getLastNTransactionsParity(address, nTransactions, since) {
     
-    bufferSize = bufferSize || this.bufferSize
-    timeout = timeout || this.timeout
-
     let endBlockNumber = await this.web3.eth.getBlockNumber()    
-    let startBlockNumber = endBlockNumber - bufferSize    
+    let startBlockNumber = endBlockNumber - this.bufferSize    
     let max = nTransactions
     let ts = []
     let blocks = []
@@ -267,14 +264,14 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
     
     while (ts.length < nTransactions 
             && startBlockNumber >= 1  //stop at block 1      
-            && (performance.now() - t0) < (timeout * 1000)
+            && (performance.now() - t0) < (this.timeout * 1000)
             && (!since || blocks.length == 0 || (blocks.length && blocks[0].timestamp >= since))) {
 
       blocks = await this._getBlocks(startBlockNumber, endBlockNumber, true)                  
       ts = ts.concat(this._getTransactionsByAddressFromBlocks(blocks, address, max - ts.length))      
 
-      startBlockNumber -= bufferSize + 1 //moves buffer pointer
-      endBlockNumber -= bufferSize + 1                 
+      startBlockNumber -= this.bufferSize + 1 //moves buffer pointer
+      endBlockNumber -= this.bufferSize + 1                 
     }    
 
     let transactions = []
