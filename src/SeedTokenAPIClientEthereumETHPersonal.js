@@ -47,7 +47,7 @@ class SeedTokenAPIClientEthereumETHPersonal extends SeedTokenAPIClientAbstract {
       throw new Error('Invalid rpcURL')
     }
 
-    this.axios = Axios.create({baseURL: process.env['VUE_APP_PARITY_URL_EXPLORER']});
+    this.axios = Axios.create({baseURL: process.env['SEEDTOKEN_API_CLIENT_BLOCKSCOUT_URL']});
 
     this.web3 = new Web3(provider)
 
